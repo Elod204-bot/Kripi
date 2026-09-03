@@ -9,9 +9,14 @@ TARGET_URL = "https://www.kripicard.com/api/register"
 REF_CODE = "cmVmOjExNDc1.PPLt-heePjNCjEi9EBQuUp-8nDef6qAct4U_j8RzVTc"
 
 def run():
-    # 1. Email letrehozas
-    doms = requests.get(f"{MAIL_TM_BASE}/domains").json()
-    domain = doms[0]['domain'] if doms else "gmail.com"
+    # 1. Email letrehozas (fixed domain parsing)
+    res = requests.get(f"{MAIL_TM_BASE}/domains")
+    data = res.json()
+    
+    # Handle mail.tm Hydra format or raw list
+    domains = data.get('hydra:member', data) if isinstance(data, dict) else data
+    domain = domains[0]['domain'] if domains else "gmail.com"
+    
     user = ''.join(random.choices(string.ascii_lowercase, k=10))
     pwd = ''.join(random.choices(string.ascii_letters + string.digits, k=12)) + "A1!"
     email = f"{user}@{domain}"
@@ -48,8 +53,9 @@ def run():
     for _ in range(12):
         time.sleep(5)
         msgs = requests.get(f"{MAIL_TM_BASE}/messages", headers={"Authorization": f"Bearer {token}"}).json()
-        if msgs:
-            msg_id = msgs[0]['id']
+        msg_list = msgs.get('hydra:member', msgs) if isinstance(msgs, dict) else msgs
+        if msg_list:
+            msg_id = msg_list[0]['id']
             content = requests.get(f"{MAIL_TM_BASE}/messages/{msg_id}", headers={"Authorization": f"Bearer {token}"}).json().get("text", "")
             urls = re.findall(r'https?://[^\s<>"]+|www\.[^\s<>"]+', content)
             for u in urls:
